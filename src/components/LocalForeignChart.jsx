@@ -5,12 +5,13 @@ import { CHART_COLORS } from '../utils/dataLoader';
 
 const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
-        const d = payload[0].payload;
         return (
             <div className="custom-tooltip">
-                <div className="label">{d.name}</div>
-                <div className="value">Local: {d.local.toFixed(2)}%</div>
-                <div className="value">Foreign: {d.foreign.toFixed(2)}%</div>
+                {payload.map((entry, i) => (
+                    <div key={i} className="value" style={{ color: entry.color || entry.payload?.fill }}>
+                        {entry.payload?.name || 'N/A'}: {(entry.value ?? 0).toFixed(2)}%
+                    </div>
+                ))}
             </div>
         );
     }

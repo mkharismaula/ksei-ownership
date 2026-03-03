@@ -5,12 +5,13 @@ import { CHART_COLORS, getInvestorTypeLabel } from '../utils/dataLoader';
 
 const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
-        const d = payload[0].payload;
+        const d = payload[0]?.payload;
+        if (!d) return null;
         return (
             <div className="custom-tooltip">
-                <div className="label">{d.name}</div>
-                <div className="value">{d.value.toFixed(2)}% ownership</div>
-                <div className="value">{d.shares?.toLocaleString('id-ID')} shares</div>
+                <div className="label">{d.name || 'N/A'}</div>
+                <div className="value">{(d.value ?? 0).toFixed(2)}% ownership</div>
+                <div className="value">{(d.shares ?? 0).toLocaleString('id-ID')} shares</div>
             </div>
         );
     }

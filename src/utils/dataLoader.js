@@ -1,12 +1,65 @@
 import * as XLSX from 'xlsx';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+async function fetchWithRetry(url, retries = MAX_RETRIES) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const contentType = response.headers.get('content-type') || '';
+            // Guard against accidentally fetching an HTML error page
+            if (contentType.includes('text/html')) {
+                throw new Error('Received HTML instead of xlsx file. Check that the file exists in the public/ folder.');
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            if (!arrayBuffer || arrayBuffer.byteLength < 100) {
+                throw new Error('Downloaded file is empty or too small');
+            }
+            return arrayBuffer;
+        } catch (err) {
+            console.warn(`Fetch attempt ${attempt}/${retries} failed:`, err.message);
+            if (attempt === retries) throw err;
+            await new Promise(r => setTimeout(r, RETRY_DELAY * attempt));
+        }
+    }
+}
+
+// Try multiple possible column name variants
+function findColumn(clean, ...variants) {
+    for (const v of variants) {
+        if (clean[v] !== undefined && clean[v] !== '') return clean[v];
+    }
+    return '';
+}
+
 export async function loadKSEIData() {
-    const response = await fetch('/ksei_data.xlsx');
-    const arrayBuffer = await response.arrayBuffer();
+    const arrayBuffer = await fetchWithRetry('/ksei_data.xlsx');
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('No sheets found in the xlsx file');
+    }
+
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rawData || rawData.length === 0) {
+        throw new Error('No data rows found in the spreadsheet');
+    }
+
+    console.log(`Loaded ${rawData.length} rows from sheet "${sheetName}"`);
+
+    // Parse numeric fields safely
+    const parseNum = (v) => {
+        if (typeof v === 'number') return v;
+        if (!v && v !== 0) return 0;
+        return parseFloat(String(v).replace(/,/g, '').trim()) || 0;
+    };
 
     // Normalize and clean data
     const data = rawData.map(row => {
@@ -20,30 +73,32 @@ export async function loadKSEIData() {
             clean[normalizedKey] = value;
         }
 
-        // Parse numeric fields
-        const parseNum = (v) => {
-            if (typeof v === 'number') return v;
-            if (!v) return 0;
-            return parseFloat(String(v).replace(/,/g, '').trim()) || 0;
-        };
-
         return {
-            date: clean.DATE || '',
-            shareCode: clean.SHARE_CODE || '',
-            issuerName: clean.ISSUER_NAME || '',
-            investorName: clean.INVESTOR_NAME || '',
-            investorType: clean.INVESTOR_TYPE || '',
-            localForeign: clean.LOCAL_FOREIGN || '',
-            nationality: clean.NATIONALITY || '',
-            domicile: clean.DOMICILE || '',
-            holdingsScripless: parseNum(clean.HOLDINGS_SCRIPLESS),
-            holdingsScript: parseNum(clean.HOLDINGS_SCRIP),
-            totalHoldingShares: parseNum(clean.TOTAL_HOLDING_SHARES),
-            percentage: parseNum(clean.PERCENTAGE),
+            date: findColumn(clean, 'DATE'),
+            shareCode: findColumn(clean, 'SHARE_CODE', 'SHARECODE', 'STOCK_CODE', 'TICKER'),
+            issuerName: findColumn(clean, 'ISSUER_NAME', 'ISSUERNAME', 'COMPANY_NAME', 'ISSUER'),
+            investorName: findColumn(clean, 'INVESTOR_NAME', 'INVESTORNAME', 'SHAREHOLDER_NAME', 'INVESTOR'),
+            investorType: findColumn(clean, 'INVESTOR_TYPE', 'INVESTORTYPE', 'TYPE'),
+            localForeign: findColumn(clean, 'LOCAL_FOREIGN', 'LOCALFOREIGN', 'LOCAL/FOREIGN', 'L_F'),
+            nationality: findColumn(clean, 'NATIONALITY'),
+            domicile: findColumn(clean, 'DOMICILE'),
+            holdingsScripless: parseNum(findColumn(clean, 'HOLDINGS_SCRIPLESS', 'SCRIPLESS', 'HOLDINGS_(SCRIPLESS)')),
+            holdingsScript: parseNum(findColumn(clean, 'HOLDINGS_SCRIP', 'SCRIP', 'HOLDINGS_(SCRIP)')),
+            totalHoldingShares: parseNum(findColumn(clean, 'TOTAL_HOLDING_SHARES', 'TOTAL_HOLDINGS', 'TOTAL_HOLDING', 'TOTAL')),
+            percentage: parseNum(findColumn(clean, 'PERCENTAGE', 'PCT', 'PERCENT', '%')),
         };
     });
 
-    return data.filter(d => d.shareCode);
+    const filtered = data.filter(d => d.shareCode);
+    console.log(`Parsed ${filtered.length} valid shareholder records`);
+
+    if (filtered.length === 0) {
+        // Log first row keys to help debug column mismatch
+        console.error('Column names found:', Object.keys(rawData[0]));
+        throw new Error('No valid records found. Column names may not match expected format.');
+    }
+
+    return filtered;
 }
 
 // Group data by stock code

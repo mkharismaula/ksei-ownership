@@ -19,20 +19,36 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCode, setSelectedCode] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Load data on mount
+  // Load data on mount (and on retry) — handles React 18 StrictMode double-mount
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
     loadKSEIData()
       .then((rawData) => {
-        setData(rawData);
-        setLoading(false);
+        if (!cancelled) {
+          setData(rawData);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        console.error('Failed to load data:', err);
-        setError(err.message);
-        setLoading(false);
+        if (!cancelled) {
+          console.error('Failed to load data:', err);
+          setError(err.message);
+          setLoading(false);
+        }
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [retryCount]);
+
+  // Retry handler
+  const handleRetry = () => setRetryCount((c) => c + 1);
 
   // Compute stock map & list
   const stockMap = useMemo(() => (data ? groupByStock(data) : {}), [data]);
@@ -74,6 +90,22 @@ function App() {
       <div className="loading-container">
         <div style={{ fontSize: 48 }}>⚠️</div>
         <div className="loading-text">Error: {error}</div>
+        <button
+          onClick={handleRetry}
+          style={{
+            padding: '12px 28px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 10,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginTop: 8,
+          }}
+        >
+          🔄 Retry
+        </button>
       </div>
     );
   }
