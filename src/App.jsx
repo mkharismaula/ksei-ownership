@@ -14,6 +14,8 @@ import ShareholderTable from './components/ShareholderTable';
 import LocalForeignChart from './components/LocalForeignChart';
 import CrossStockRelationships from './components/CrossStockRelationships';
 import ShareholderProfile from './components/ShareholderProfile';
+import ConglomerateSelector from './components/ConglomerateSelector';
+import { CONGLOMERATES } from './utils/conglomerates';
 
 
 function App() {
@@ -23,6 +25,7 @@ function App() {
   const [selectedCode, setSelectedCode] = useState(null);
   const [selectedShareholder, setSelectedShareholder] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [selectedConglo, setSelectedConglo] = useState(null);
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -206,31 +209,52 @@ function App() {
           selectedCode={selectedCode}
         />
 
+        {/* Conglomerate Selector */}
+        <ConglomerateSelector
+          onSelect={(name) => setSelectedConglo(name)}
+          selectedConglo={selectedConglo}
+          stockMap={stockMap}
+        />
+
         {/* Stock Chips - Quick Select */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {stockList.slice(0, 30).map((s) => (
-              <button
-                key={s.code}
-                className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
-                onClick={() => setSelectedCode(s.code)}
-              >
-                <div className="stock-chip-code">{s.code}</div>
-              </button>
-            ))}
-            {stockList.length > 30 && (
-              <div style={{
-                padding: '10px 12px',
-                fontSize: 12,
-                color: 'var(--text-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-                +{stockList.length - 30} more (use search)
+        {(() => {
+          // Filter stocks by selected conglomerate
+          const conglo = selectedConglo
+            ? CONGLOMERATES.find(c => c.name === selectedConglo)
+            : null;
+          const filteredChips = conglo
+            ? stockList.filter(s => conglo.stocks.includes(s.code))
+            : stockList;
+          const displayChips = conglo ? filteredChips : filteredChips.slice(0, 30);
+          const remaining = conglo ? 0 : filteredChips.length - 30;
+
+          return (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {displayChips.map((s) => (
+                  <button
+                    key={s.code}
+                    className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
+                    onClick={() => setSelectedCode(s.code)}
+                  >
+                    <div className="stock-chip-code">{s.code}</div>
+                  </button>
+                ))}
+                {remaining > 0 && (
+                  <div style={{
+                    padding: '10px 12px',
+                    fontSize: 12,
+                    color: 'var(--text-tertiary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    +{remaining} more (use search)
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
 
         {selectedShareholder ? (
           <div>

@@ -1113,3 +1113,105 @@ body {
 .cross-stock-expand-btn:hover {
   background: rgba(102, 126, 234, 0.05);
 }
+
+/* ===== CONGLOMERATE SELECTOR ===== */
+.conglo-section {
+  margin-bottom: 24px;
+}
+
+.conglo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.conglo-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conglo-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conglo-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.conglo-pill:hover {
+  border-color: var(--text-accent);
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.conglo-pill.active {
+  background: var(--bg-accent);
+  border-color: transparent;
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+.conglo-pill.active .conglo-pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.conglo-pill-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.conglo-pill-name {
+  line-height: 1;
+}
+
+.conglo-pill-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  line-height: 1.4;
+}
+
+.conglo-toggle {
+  color: var(--text-accent);
+  border-style: dashed;
+  font-weight: 600;
+}
+
+.conglo-info-bar {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
