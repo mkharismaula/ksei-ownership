@@ -15,13 +15,36 @@ import LocalForeignChart from './components/LocalForeignChart';
 import CrossStockRelationships from './components/CrossStockRelationships';
 import ShareholderProfile from './components/ShareholderProfile';
 
+
 function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCode, setSelectedCode] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [selectedShareholder, setSelectedShareholder] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check local storage or system preference
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ksei-theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  // Apply dark mode class to body whenever it changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('ksei-theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('ksei-theme', 'light');
+    }
+  }, [isDarkMode]);
 
   // Load data on mount (and on retry) — handles React 18 StrictMode double-mount
   useEffect(() => {
@@ -50,14 +73,24 @@ function App() {
   }, [retryCount]);
 
   // Retry handler
-  const handleRetry = () => setRetryCount((c) => c + 1);
+  const handleRetry = () => {
+    setRetryCount((c) => c + 1);
+  };
 
-  // Compute stock map & list
-  const stockMap = useMemo(() => (data ? groupByStock(data) : {}), [data]);
+  // Memoized data processing...
+  const { stockMap, dataDate } = useMemo(() => {
+    if (!data || data.length === 0) return { stockMap: {}, dataDate: null };
+    const date = data[0].date || null; // Changed from reportingDate to date to match original data structure
+    return { stockMap: groupByStock(data), dataDate: date };
+  }, [data]);
+
   const stockList = useMemo(() => getStockList(stockMap), [stockMap]);
 
-  // Build cross-stock investor index
-  const investorIndex = useMemo(() => (data ? buildInvestorIndex(data) : {}), [data]);
+  // Build index for sharing/searching across all shareholders
+  const investorIndex = useMemo(() => {
+    if (!data || data.length === 0) return {};
+    return buildInvestorIndex(data);
+  }, [data]);
 
   // Auto-select first stock once loaded
   useEffect(() => {
@@ -66,17 +99,15 @@ function App() {
     }
   }, [stockList, selectedCode]);
 
+  // Get data for selected stock
   const selectedStock = selectedCode ? stockMap[selectedCode] : null;
   const shareholders = selectedStock ? selectedStock.shareholders : [];
 
   // Cross-stock links for selected stock
-  const crossLinks = useMemo(
-    () => (shareholders.length > 0 ? getCrossStockLinks(shareholders, investorIndex, selectedCode) : []),
-    [shareholders, investorIndex, selectedCode]
-  );
-
-  // Extract date from first row
-  const dataDate = data && data.length > 0 ? data[0].date : '';
+  const crossLinks = useMemo(() => {
+    if (!shareholders || shareholders.length === 0 || !data) return [];
+    return getCrossStockLinks(shareholders, investorIndex, selectedCode); // Changed data to investorIndex to match original function signature
+  }, [shareholders, investorIndex, selectedCode]); // Changed data to investorIndex in dependency array
 
   if (loading) {
     return (
@@ -112,6 +143,17 @@ function App() {
     );
   }
 
+  // Handle selection from search
+  const handleSelectStock = (code) => {
+    setSelectedCode(code);
+    setSelectedShareholder(null); // Clear shareholder view if stock selected
+  };
+
+  const handleSelectShareholder = (investorName) => {
+    setSelectedShareholder(investorName);
+    // Don't clear selectedCode — so user can go "back" to the last stock
+  };
+
   return (
     <>
       {/* Header */}
@@ -127,7 +169,28 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {dataDate && <div className="header-date">📅 Data: {dataDate}</div>}
             <div className="header-date">📊 {stockList.length} Stocks</div>
-            <div className="header-date">👤 {Object.keys(investorIndex).length} Shareholders</div>
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all var(--transition-base)'
+              }}
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
           </div>
         </div>
       </header>
@@ -138,55 +201,49 @@ function App() {
         <StockSearch
           stocks={stockList}
           investorIndex={investorIndex}
-          onSelectStock={(code) => {
-            setSelectedCode(code);
-            setSelectedShareholder(null);
-          }}
-          onSelectShareholder={(name) => {
-            setSelectedShareholder(name);
-          }}
+          onSelectStock={handleSelectStock}
+          onSelectShareholder={handleSelectShareholder}
           selectedCode={selectedCode}
         />
 
         {/* Stock Chips - Quick Select */}
-        {!selectedShareholder && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {stockList.slice(0, 30).map((s) => (
-                <button
-                  key={s.code}
-                  className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
-                  onClick={() => { setSelectedCode(s.code); setSelectedShareholder(null); }}
-                >
-                  <div className="stock-chip-code">{s.code}</div>
-                </button>
-              ))}
-              {stockList.length > 30 && (
-                <div style={{
-                  padding: '10px 12px',
-                  fontSize: 12,
-                  color: '#9ca3af',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}>
-                  +{stockList.length - 30} more (use search)
-                </div>
-              )}
-            </div>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {stockList.slice(0, 30).map((s) => (
+              <button
+                key={s.code}
+                className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
+                onClick={() => setSelectedCode(s.code)}
+              >
+                <div className="stock-chip-code">{s.code}</div>
+              </button>
+            ))}
+            {stockList.length > 30 && (
+              <div style={{
+                padding: '10px 12px',
+                fontSize: 12,
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                +{stockList.length - 30} more (use search)
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Shareholder Profile View */}
-        {selectedShareholder && investorIndex[selectedShareholder] ? (
-          <ShareholderProfile
-            shareholderName={selectedShareholder}
-            holdings={investorIndex[selectedShareholder]}
-            onStockClick={(code) => {
-              setSelectedCode(code);
-              setSelectedShareholder(null);
-            }}
-            onBack={() => setSelectedShareholder(null)}
-          />
+        {selectedShareholder ? (
+          <div>
+            <ShareholderProfile
+              shareholderName={selectedShareholder}
+              holdings={investorIndex[selectedShareholder.toUpperCase().trim()] || []}
+              onStockClick={(code) => {
+                setSelectedCode(code);
+                setSelectedShareholder(null);
+              }}
+              onBack={() => setSelectedShareholder(null)}
+            />
+          </div>
         ) : selectedStock ? (
           <>
             {/* Selected Stock Header */}
@@ -253,13 +310,13 @@ function App() {
                   {crossLinks.length} Connected Investors
                 </span>
               </div>
-              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, marginTop: -8 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -8 }}>
                 Shareholders of <strong>{selectedStock.code}</strong> who also hold shares in other listed companies.
                 Click any stock to navigate to it.
               </div>
               <CrossStockRelationships
                 crossLinks={crossLinks}
-                onStockClick={setSelectedCode}
+                onStockClick={handleSelectStock}
               />
             </div>
 
@@ -277,7 +334,7 @@ function App() {
         ) : (
           <div className="empty-state">
             <div className="icon">📈</div>
-            <p>Select a stock or search for a shareholder to view details</p>
+            <p>Select a stock or shareholder to view details</p>
           </div>
         )}
       </main>

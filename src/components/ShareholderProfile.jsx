@@ -95,7 +95,7 @@ export default function ShareholderProfile({ shareholderName, holdings, onStockC
                         <tbody>
                             {holdings.map((h, i) => (
                                 <tr key={i}>
-                                    <td style={{ color: '#9ca3af', fontSize: 12 }}>{i + 1}</td>
+                                    <td style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{i + 1}</td>
                                     <td>
                                         <span style={{
                                             fontWeight: 700,

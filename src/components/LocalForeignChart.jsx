@@ -55,7 +55,7 @@ export default function LocalForeignChart({ shareholders }) {
                 {otherPct > 0.5 && (
                     <div
                         className="ownership-segment"
-                        style={{ width: `${otherPct}%`, background: '#e5e7eb' }}
+                        style={{ width: `${otherPct}%`, background: 'var(--text-tertiary)' }}
                         title={`Unclassified: ${otherPct.toFixed(2)}%`}
                     />
                 )}
@@ -71,7 +71,7 @@ export default function LocalForeignChart({ shareholders }) {
                 </span>
                 {otherPct > 0.5 && (
                     <span>
-                        <span style={{ color: '#9ca3af', fontWeight: 600 }}>● Other</span>{' '}
+                        <span style={{ color: 'var(--text-tertiary)', fontWeight: 600 }}>● Other</span>{' '}
                         {otherPct.toFixed(1)}%
                     </span>
                 )}

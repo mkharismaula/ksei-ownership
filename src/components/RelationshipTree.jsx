@@ -64,7 +64,7 @@ export default function RelationshipTree({ shareholders, issuerName }) {
                         textAlign: 'center',
                         fontSize: '11px',
                         fontWeight: 600,
-                        color: '#6b7280',
+                        color: 'var(--text-secondary)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
                         marginBottom: '12px',
@@ -97,7 +97,7 @@ export default function RelationshipTree({ shareholders, issuerName }) {
                         textAlign: 'center',
                         fontSize: '11px',
                         fontWeight: 600,
-                        color: '#9ca3af',
+                        color: 'var(--text-tertiary)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
                         margin: '20px 0 12px',
@@ -108,14 +108,14 @@ export default function RelationshipTree({ shareholders, issuerName }) {
                         {significant.map((s, i) => (
                             <div key={i} className="branch-item">
                                 <div className="shareholder-node" style={{
-                                    borderColor: '#e5e7eb',
-                                    background: '#fafbfc',
+                                    borderColor: 'var(--border-color)',
+                                    background: 'var(--bg-secondary)',
                                     padding: '10px 14px',
                                 }}>
                                     <div className="node-name" style={{ fontSize: '11px' }}>
                                         {s.investorName}
                                     </div>
-                                    <div className="node-pct" style={{ fontSize: '13px', color: '#6b7280' }}>
+                                    <div className="node-pct" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                                         {s.percentage.toFixed(2)}%
                                     </div>
                                     <div className={`node-type ${getTypeClass(s.investorType)}`}>
@@ -134,7 +134,7 @@ export default function RelationshipTree({ shareholders, issuerName }) {
                     textAlign: 'center',
                     marginTop: '20px',
                     fontSize: '12px',
-                    color: '#9ca3af',
+                    color: 'var(--text-tertiary)',
                 }}>
                     + {minor.length} other shareholder(s) with {'<'}1% each
                 </div>
