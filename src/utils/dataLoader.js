@@ -220,3 +220,4 @@ export function getCrossStockLinks(shareholders, investorIndex, currentCode) {
     results.sort((a, b) => b.otherStocks.length - a.otherStocks.length);
     return results;
 }
+

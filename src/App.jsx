@@ -15,6 +15,11 @@ import LocalForeignChart from './components/LocalForeignChart';
 import CrossStockRelationships from './components/CrossStockRelationships';
 import ShareholderProfile from './components/ShareholderProfile';
 import ConglomerateSelector from './components/ConglomerateSelector';
+import WhaleTracker from './components/WhaleTracker';
+import ConnectionFinder from './components/ConnectionFinder';
+import FloatAnalysis from './components/FloatAnalysis';
+import NetworkGraph from './components/NetworkGraph';
+import ConglomerateProfile from './components/ConglomerateProfile';
 import { CONGLOMERATES } from './utils/conglomerates';
 
 
@@ -26,6 +31,8 @@ function App() {
   const [selectedShareholder, setSelectedShareholder] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedConglo, setSelectedConglo] = useState(null);
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | whales | connections
+  const [viewCongloProfile, setViewCongloProfile] = useState(null);
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -149,12 +156,21 @@ function App() {
   // Handle selection from search
   const handleSelectStock = (code) => {
     setSelectedCode(code);
-    setSelectedShareholder(null); // Clear shareholder view if stock selected
+    setSelectedShareholder(null);
+    setActiveTab('dashboard');
+    setViewCongloProfile(null);
   };
 
   const handleSelectShareholder = (investorName) => {
     setSelectedShareholder(investorName);
-    // Don't clear selectedCode — so user can go "back" to the last stock
+    setActiveTab('dashboard');
+    setViewCongloProfile(null);
+  };
+
+  // Handle conglomerate profile view
+  const handleViewCongloProfile = (name) => {
+    setViewCongloProfile(name);
+    setActiveTab('dashboard');
   };
 
   return (
@@ -198,168 +214,259 @@ function App() {
         </div>
       </header>
 
+      {/* Tab Navigation */}
+      <nav style={{
+        background: 'var(--bg-secondary)',
+        borderBottom: '1px solid var(--border-color)',
+        position: 'sticky',
+        top: 64,
+        zIndex: 99,
+      }}>
+        <div className="app-container" style={{ display: 'flex', gap: 0 }}>
+          {[
+            { key: 'dashboard', label: '📊 Dashboard', icon: '' },
+            { key: 'whales', label: '🐋 Whale Tracker', icon: '' },
+            { key: 'connections', label: '🔀 Connection Finder', icon: '' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setViewCongloProfile(null); }}
+              style={{
+                padding: '12px 20px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab.key ? '3px solid var(--text-accent)' : '3px solid transparent',
+                color: activeTab === tab.key ? 'var(--text-accent)' : 'var(--text-secondary)',
+                fontSize: 13,
+                fontWeight: activeTab === tab.key ? 700 : 500,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {/* Main Content */}
       <main className="app-container" style={{ paddingBottom: 40 }}>
-        {/* Search */}
-        <StockSearch
-          stocks={stockList}
-          investorIndex={investorIndex}
-          onSelectStock={handleSelectStock}
-          onSelectShareholder={handleSelectShareholder}
-          selectedCode={selectedCode}
-        />
 
-        {/* Conglomerate Selector */}
-        <ConglomerateSelector
-          onSelect={(name) => setSelectedConglo(name)}
-          selectedConglo={selectedConglo}
-          stockMap={stockMap}
-        />
-
-        {/* Stock Chips - Quick Select */}
-        {(() => {
-          // Filter stocks by selected conglomerate
-          const conglo = selectedConglo
-            ? CONGLOMERATES.find(c => c.name === selectedConglo)
-            : null;
-          const filteredChips = conglo
-            ? stockList.filter(s => conglo.stocks.includes(s.code))
-            : stockList;
-          const displayChips = conglo ? filteredChips : filteredChips.slice(0, 30);
-          const remaining = conglo ? 0 : filteredChips.length - 30;
-
-          return (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {displayChips.map((s) => (
-                  <button
-                    key={s.code}
-                    className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
-                    onClick={() => setSelectedCode(s.code)}
-                  >
-                    <div className="stock-chip-code">{s.code}</div>
-                  </button>
-                ))}
-                {remaining > 0 && (
-                  <div style={{
-                    padding: '10px 12px',
-                    fontSize: 12,
-                    color: 'var(--text-tertiary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    +{remaining} more (use search)
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {selectedShareholder ? (
-          <div>
-            <ShareholderProfile
-              shareholderName={selectedShareholder}
-              holdings={investorIndex[selectedShareholder.toUpperCase().trim()] || []}
-              onStockClick={(code) => {
-                setSelectedCode(code);
-                setSelectedShareholder(null);
-              }}
-              onBack={() => setSelectedShareholder(null)}
-            />
-          </div>
-        ) : selectedStock ? (
+        {/* ===== TAB: DASHBOARD ===== */}
+        {activeTab === 'dashboard' && (
           <>
-            {/* Selected Stock Header */}
-            <div style={{
-              marginBottom: 24,
-              padding: '20px 24px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: 16,
-              color: 'white',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 500, opacity: 0.8, marginBottom: 4 }}>
-                Selected Stock
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em' }}>
-                {selectedStock.code}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 500, opacity: 0.9 }}>
-                {selectedStock.name}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <StatsCards
-              selectedStock={selectedStock}
-              shareholders={shareholders}
+            {/* Search */}
+            <StockSearch
+              stocks={stockList}
+              investorIndex={investorIndex}
+              onSelectStock={handleSelectStock}
+              onSelectShareholder={handleSelectShareholder}
+              selectedCode={selectedCode}
             />
 
-            {/* Charts Row */}
-            <div className="dashboard-grid">
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">📊 Ownership Distribution</div>
+            {/* Conglomerate Selector */}
+            <ConglomerateSelector
+              onSelect={(name) => setSelectedConglo(name)}
+              onViewProfile={handleViewCongloProfile}
+              selectedConglo={selectedConglo}
+              stockMap={stockMap}
+            />
+
+            {/* Stock Chips - Quick Select */}
+            {(() => {
+              const conglo = selectedConglo
+                ? CONGLOMERATES.find(c => c.name === selectedConglo)
+                : null;
+              const filteredChips = conglo
+                ? stockList.filter(s => conglo.stocks.includes(s.code))
+                : stockList;
+              const displayChips = conglo ? filteredChips : filteredChips.slice(0, 30);
+              const remaining = conglo ? 0 : filteredChips.length - 30;
+
+              return (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {displayChips.map((s) => (
+                      <button
+                        key={s.code}
+                        className={`stock-chip ${selectedCode === s.code ? 'active' : ''}`}
+                        onClick={() => setSelectedCode(s.code)}
+                      >
+                        <div className="stock-chip-code">{s.code}</div>
+                      </button>
+                    ))}
+                    {remaining > 0 && (
+                      <div style={{
+                        padding: '10px 12px',
+                        fontSize: 12,
+                        color: 'var(--text-tertiary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}>
+                        +{remaining} more (use search)
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <OwnershipChart shareholders={shareholders} />
-              </div>
+              );
+            })()}
 
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">🌐 Local vs Foreign Ownership</div>
+            {/* Conglomerate Profile View */}
+            {viewCongloProfile ? (
+              (() => {
+                const conglo = CONGLOMERATES.find(c => c.name === viewCongloProfile);
+                if (!conglo) return null;
+                return (
+                  <ConglomerateProfile
+                    congloName={conglo.name}
+                    congloStocks={conglo.stocks}
+                    stockMap={stockMap}
+                    onSelectStock={handleSelectStock}
+                    onBack={() => setViewCongloProfile(null)}
+                  />
+                );
+              })()
+            ) : selectedShareholder ? (
+              <div>
+                <ShareholderProfile
+                  shareholderName={selectedShareholder}
+                  holdings={investorIndex[selectedShareholder.toUpperCase().trim()] || []}
+                  onStockClick={(code) => {
+                    setSelectedCode(code);
+                    setSelectedShareholder(null);
+                  }}
+                  onBack={() => setSelectedShareholder(null)}
+                />
+              </div>
+            ) : selectedStock ? (
+              <>
+                {/* Selected Stock Header */}
+                <div style={{
+                  marginBottom: 24,
+                  padding: '20px 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: 16,
+                  color: 'white',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, opacity: 0.8, marginBottom: 4 }}>
+                    Selected Stock
+                  </div>
+                  <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em' }}>
+                    {selectedStock.code}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 500, opacity: 0.9 }}>
+                    {selectedStock.name}
+                  </div>
                 </div>
-                <LocalForeignChart shareholders={shareholders} />
-              </div>
-            </div>
 
-            {/* Relationship Tree */}
-            <div className="card" style={{ marginBottom: 24 }}>
-              <div className="card-header">
-                <div className="card-title">🔗 Shareholder Relationship Structure</div>
-                <span className="card-badge badge-local">
-                  {shareholders.filter(s => s.percentage >= 5).length + 1} Key Holders
-                </span>
-              </div>
-              <RelationshipTree
-                shareholders={shareholders}
-                issuerName={selectedStock.name}
-              />
-            </div>
+                {/* Stats */}
+                <StatsCards
+                  selectedStock={selectedStock}
+                  shareholders={shareholders}
+                />
 
-            {/* Cross-Stock Shareholder Relationships */}
-            <div className="card" style={{ marginBottom: 24 }}>
-              <div className="card-header">
-                <div className="card-title">🔀 Cross-Stock Shareholder Connections</div>
-                <span className="card-badge badge-foreign">
-                  {crossLinks.length} Connected Investors
-                </span>
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -8 }}>
-                Shareholders of <strong>{selectedStock.code}</strong> who also hold shares in other listed companies.
-                Click any stock to navigate to it.
-              </div>
-              <CrossStockRelationships
-                crossLinks={crossLinks}
-                onStockClick={handleSelectStock}
-              />
-            </div>
+                {/* Feature 3: Float & Concentration Analysis */}
+                <FloatAnalysis shareholders={shareholders} stockCode={selectedStock.code} />
 
-            {/* Full Shareholder Table */}
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">📋 All Shareholders Detail</div>
-                <span className="card-badge badge-local">
-                  {shareholders.length} Records
-                </span>
+                {/* Charts Row */}
+                <div className="dashboard-grid">
+                  <div className="card">
+                    <div className="card-header">
+                      <div className="card-title">📊 Ownership Distribution</div>
+                    </div>
+                    <OwnershipChart shareholders={shareholders} />
+                  </div>
+
+                  <div className="card">
+                    <div className="card-header">
+                      <div className="card-title">🌐 Local vs Foreign Ownership</div>
+                    </div>
+                    <LocalForeignChart shareholders={shareholders} />
+                  </div>
+                </div>
+
+                {/* Feature 2: Network Graph */}
+                <NetworkGraph
+                  shareholders={shareholders}
+                  crossLinks={crossLinks}
+                  stockCode={selectedStock.code}
+                  issuerName={selectedStock.name}
+                  onSelectStock={handleSelectStock}
+                />
+
+                {/* Relationship Tree */}
+                <div className="card" style={{ marginBottom: 24 }}>
+                  <div className="card-header">
+                    <div className="card-title">🔗 Shareholder Relationship Structure</div>
+                    <span className="card-badge badge-local">
+                      {shareholders.filter(s => s.percentage >= 5).length + 1} Key Holders
+                    </span>
+                  </div>
+                  <RelationshipTree
+                    shareholders={shareholders}
+                    issuerName={selectedStock.name}
+                  />
+                </div>
+
+                {/* Cross-Stock Relationships */}
+                <div className="card" style={{ marginBottom: 24 }}>
+                  <div className="card-header">
+                    <div className="card-title">🔀 Cross-Stock Shareholder Connections</div>
+                    <span className="card-badge badge-foreign">
+                      {crossLinks.length} Connected Investors
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -8 }}>
+                    Shareholders of <strong>{selectedStock.code}</strong> who also hold shares in other listed companies.
+                    Click any stock to navigate to it.
+                  </div>
+                  <CrossStockRelationships
+                    crossLinks={crossLinks}
+                    onStockClick={handleSelectStock}
+                  />
+                </div>
+
+                {/* Full Shareholder Table */}
+                <div className="card">
+                  <div className="card-header">
+                    <div className="card-title">📋 All Shareholders Detail</div>
+                    <span className="card-badge badge-local">
+                      {shareholders.length} Records
+                    </span>
+                  </div>
+                  <ShareholderTable shareholders={shareholders} />
+                </div>
+              </>
+            ) : (
+              <div className="empty-state">
+                <div className="icon">📈</div>
+                <p>Select a stock or shareholder to view details</p>
               </div>
-              <ShareholderTable shareholders={shareholders} />
-            </div>
+            )}
           </>
-        ) : (
-          <div className="empty-state">
-            <div className="icon">📈</div>
-            <p>Select a stock or shareholder to view details</p>
-          </div>
+        )}
+
+        {/* ===== TAB: WHALE TRACKER ===== */}
+        {activeTab === 'whales' && (
+          <WhaleTracker
+            investorIndex={investorIndex}
+            onSelectShareholder={(name) => {
+              handleSelectShareholder(name);
+              setActiveTab('dashboard');
+            }}
+            onSelectStock={handleSelectStock}
+          />
+        )}
+
+        {/* ===== TAB: CONNECTION FINDER ===== */}
+        {activeTab === 'connections' && (
+          <ConnectionFinder
+            stockList={stockList}
+            stockMap={stockMap}
+            investorIndex={investorIndex}
+            onSelectStock={handleSelectStock}
+          />
         )}
       </main>
 
@@ -372,3 +479,4 @@ function App() {
 }
 
 export default App;
+

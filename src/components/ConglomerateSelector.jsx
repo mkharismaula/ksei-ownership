@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CONGLOMERATES } from '../utils/conglomerates';
 
-export default function ConglomerateSelector({ onSelect, selectedConglo, stockMap }) {
+export default function ConglomerateSelector({ onSelect, onViewProfile, selectedConglo, stockMap }) {
     const [expanded, setExpanded] = useState(false);
 
     // Only show conglomerates that have at least 1 stock in our data
@@ -64,9 +64,27 @@ export default function ConglomerateSelector({ onSelect, selectedConglo, stockMa
                 return (
                     <div className="conglo-info-bar">
                         <span>{conglo.emoji} <strong>{conglo.name}</strong></span>
-                        <span style={{ color: 'var(--text-secondary)' }}>
+                        <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
                             {matchedStocks.length} stocks in this group: {matchedStocks.join(', ')}
                         </span>
+                        {onViewProfile && (
+                            <button
+                                onClick={() => onViewProfile(selectedConglo)}
+                                style={{
+                                    padding: '4px 14px',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    borderRadius: 6,
+                                    border: 'none',
+                                    background: 'var(--text-accent)',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    fontFamily: 'Inter, sans-serif',
+                                }}
+                            >
+                                View Details →
+                            </button>
+                        )}
                     </div>
                 );
             })()}
