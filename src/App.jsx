@@ -20,6 +20,7 @@ import ConnectionFinder from './components/ConnectionFinder';
 import FloatAnalysis from './components/FloatAnalysis';
 import NetworkGraph from './components/NetworkGraph';
 import ConglomerateProfile from './components/ConglomerateProfile';
+import CompanyProfile from './components/CompanyProfile';
 import { CONGLOMERATES } from './utils/conglomerates';
 
 
@@ -386,6 +387,9 @@ function App() {
                     {selectedStock.name}
                   </div>
                 </div>
+
+                {/* Company Profile from IDX */}
+                <CompanyProfile stockCode={selectedStock.code} />
 
                 {/* Stats */}
                 <StatsCards
